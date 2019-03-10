@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
     Asari 2019 Software
     Copyright (C) 2016 Associacio Cosmic Research
@@ -15,21 +14,17 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 """
 
-
 from Processes import CamPoller
-import threading
-
-
+import thread
 if __name__ == '__main__':
   global cam
   cam = CamPoller()
   try:
     cam.start()
     while True:
-      time.slep(1)
-  except:
+ 
+  except: 
     cam.running = False
     cam.join()
