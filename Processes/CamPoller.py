@@ -19,51 +19,57 @@
 import picamera
 import RPi.GPIO as GPIO
 import threading
+import os
 import os.path
 import ConfigParser
 
-camera = None
-led = 12
-duration = 30
-path = '/home/pi/Videos/'
+#camera = None
+#led = 12
+#duration = 30
+#path = '/home/pi/Videos/'
 
 class CamPoller(threading.Thread):
   def __init__(self):
     threading.Thread.__init__(self)
     config = ConfigParser.ConfigParser()
     config.read("/home/pi/Ansari2019/config.ini")
-    led = int(config.get("LED", "ledCam"))
-    fps = int(config.get("CAMERA","fps"))
-    resx = int(config.get("CAMERA","resolutionX"))
-    resy = int(config.get("CAMERA","resolutionY"))
-    duration = int(config.get("CAMERA","duration"))
-    path = str(config.get("CAMERA","savedPath"))
+    self.led = int(config.get("LED", "ledCam"))
+    self.fps = int(config.get("CAMERA","fps"))
+    self.resx = int(config.get("CAMERA","resolutionX"))
+    self.resy = int(config.get("CAMERA","resolutionY"))
+    self.duration = int(config.get("CAMERA","duration"))
+    self.path = str(config.get("CAMERA","savedPath"))
     GPIO.setmode(GPIO.BOARD)
     GPIO.setwarnings(False)
-    GPIO.setup(led,GPIO.OUT)
-    GPIO.output(led,GPIO.HIGH)
+    GPIO.setup(self.led,GPIO.OUT)
+    GPIO.output(self.led,GPIO.HIGH)
     global camera
-    camera=picamera.PiCamera(resolution=(resx, resy),framerate=fps)
+    camera=picamera.PiCamera(resolution=(self.resx, self.resy),framerate=self.fps)
     self.current_value = None
     self.running = True
 
   def run(self):
-	global camera
-	for i in range (0,9999):
-	 	if not os.path.exists(path+'vid_%04d.h264' % i):
-			break
-		i = i + 1
-	GPIO.output(led,GPIO.LOW)
-	camera.start_recording(path+'vid_%04d.h264' % i)
-	try:
-		camera.wait_recording(duration)
-	except PiCameraError:
-		GPIO.output(led,PIO.HIGH)
-	while self.running:
-		i=i+1
-		camera.split_recording(path+'vid_%04d.h264' % i)
-		try:
-			camera.wait_recording(duration)
-		except PiCameraError:
-			GPIO.output(led,GPIO.HIGH)
-	camera.stop_recording()
+    global camera
+    if not os.path.exists(self.path):
+      os.makedirs(self.path)
+    for i in range (0,9999):
+      if not os.path.exists(self.path+'vid_%04d.h264' % i):
+        break
+      i = i + 1
+    GPIO.output(self.led,GPIO.LOW)
+    camera.start_recording(self.path+'vid_%04d.h264' % i)
+    try:
+      print (self.duration)
+      camera.wait_recording(self.duration)
+      print ("Video 1 recorded")
+    except PiCameraError:
+      GPIO.output(self.led,PIO.HIGH)
+    while self.running:
+      print ("running thread")
+      i=i+1
+      camera.split_recording(self.path+'vid_%04d.h264' % i)
+      try:
+        camera.wait_recording(self.duration)
+      except PiCameraError:
+        GPIO.output(self.led,GPIO.HIGH)
+    camera.stop_recording()

@@ -21,7 +21,7 @@
 
 from Processes import CamPoller
 import threading
-
+import time
 
 if __name__ == '__main__':
   global cam
@@ -29,7 +29,8 @@ if __name__ == '__main__':
   try:
     cam.start()
     while True:
-      time.slep(1)
+      time.sleep(1)
   except:
+    print ("Exception main")
     cam.running = False
     cam.join()
