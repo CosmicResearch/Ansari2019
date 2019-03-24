@@ -22,6 +22,7 @@ import threading
 import os
 import os.path
 import ConfigParser
+import logging
 
 #camera = None
 #led = 12
@@ -30,6 +31,7 @@ import ConfigParser
 
 class CamPoller(threading.Thread):
   def __init__(self):
+    logging.debug("Initializating camera")
     threading.Thread.__init__(self)
     config = ConfigParser.ConfigParser()
     config.read("/home/pi/Ansari2019/config.ini")
@@ -49,9 +51,11 @@ class CamPoller(threading.Thread):
     self.running = True
 
   def run(self):
+    logging.debug("Camera  running")
     global camera
     if not os.path.exists(self.path):
       os.makedirs(self.path)
+      logging.debug("New Video folder created at user folder")
     for i in range (0,9999):
       if not os.path.exists(self.path+'vid_%04d.h264' % i):
         break

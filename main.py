@@ -20,17 +20,29 @@
 
 
 from Processes import CamPoller
+from Processes import BMP280Poller
 import threading
 import time
+import logging
+
+logging.basicConfig(filename='/home/pi/Ansari2019/example.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.DEBUG)
+logging.info("Software on")
 
 if __name__ == '__main__':
   global cam
+  global bmp280
   cam = CamPoller()
+  bmp280 = BMP280Poller()
   try:
     cam.start()
+    bmp280.start()
     while True:
       time.sleep(1)
   except:
     print ("Exception main")
+    logging.info("Shutting down")
     cam.running = False
     cam.join()
+    bmp280.running = False
+    bmp280.join()
+    logging.info("Bye")
