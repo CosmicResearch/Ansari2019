@@ -24,25 +24,37 @@ from Processes import BMP280Poller
 import threading
 import time
 import logging
+import ConfigParser
 
-logging.basicConfig(filename='/home/pi/Ansari2019/example.log',format='%(asctime)s %(levelname)s %(message)s',level=logging.DEBUG)
-logging.info("Software on")
+def init():
+  #Create log file
+  config = ConfigParser.ConfigParser()
+  config.read("/home/pi/Ansari2019/config.ini")
+  logPath = str(config.get("LOGGER","savePath"))
+  logLevel = int(config.get("LOGGER", "logLevel"))
+  logging.basicConfig(filename='%sansariLog.log'%logPath,format='%(asctime)s %(levelname)s %(message)s',level=logLevel)
+  logging.info("---------------Log File Created---------------")
 
-if __name__ == '__main__':
+  #Create threads
   global cam
   global bmp280
   cam = CamPoller()
   bmp280 = BMP280Poller()
+  logging.debug("Threads created")
+
+if __name__ == '__main__':
+  init()
   try:
     cam.start()
     bmp280.start()
+    logging.debug("Threads running")
     while True:
       time.sleep(1)
   except:
     print ("Exception main")
-    logging.info("Shutting down")
+    logging.debug("Shutting down")
     cam.running = False
     cam.join()
     bmp280.running = False
     bmp280.join()
-    logging.info("Bye")
+    logging.info("--------------------Bye--------------------")

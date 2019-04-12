@@ -33,20 +33,18 @@ from bmp280 import BMP280
 
 class BMP280Poller(threading.Thread):
   def __init__(self):
-    logging.debug("initializating BMP")
+    logging.debug("Initializating BMP280")
     threading.Thread.__init__(self)
+
+    #Read Configfile
     config = ConfigParser.ConfigParser()
     config.read("/home/pi/Ansari2019/config.ini")
-    self.led = int(config.get("LED", "ledCam"))
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setwarnings(False)
-    GPIO.setup(self.led,GPIO.OUT)
     self.rateTime = float(config.get("BMP280", "rate_time"))
     self.measures = int(config.get("BMP280", "measures"))
-
+    
+    #Initialize
     self.kalman = Kalman()
     self.speaker = Speaker()
-
     bus = SMBus(1)
     global bmp280
     bmp280 = BMP280(i2c_dev=bus)
@@ -54,19 +52,18 @@ class BMP280Poller(threading.Thread):
     self.running = True
 
   def run(self):
-    logging.debug("bmp280 thread running")
+    logging.debug("BMP280 thread running")
     global bmp280
 
     #Compute baseline altitude
     baseline_values = []
     baseline_size = 50
-    print("Collecting baseline values for {:d} seconds. Do not move the sensor!\n".format(baseline_size/10))
     for i in range(baseline_size):
       pressure = bmp280.get_pressure()
       baseline_values.append(pressure)
       time.sleep(.1)
-    baselineAltitude = sum(baseline_values[:-25]) / len(baseline_values[:-25])
-    print('Baseline altitude: {:05.2f} metres'.format(baselineAltitude))
+    baselineAltitude = sum(baseline_values[5:]) / len(baseline_values[5:])
+    logging.info('Baseline altitude: {:05.2f} metres'.format(baselineAltitude))
 
     # Let's do some summy readings to initialize the Kalman filter
     for i in range(50):
@@ -76,16 +73,16 @@ class BMP280Poller(threading.Thread):
     currMeasures = self.measures
     apogeeAltitude = 0
     lastAltitude = 0
-    liftoffAltitude = 1
+    liftoffAltitude = 10
     apogeeReached = False
 
     #Beep, I'm ready
-    #self.speaker.beginBeep()
+    self.speaker.beginBeep()
+    logging.debug("BMP280 ready")
 
     while self.running:
       #Read Current Altitude
       currAltitude = self.kalman.calcAltitude(bmp280.get_altitude(qnh=baselineAltitude))
-      #print('Relative altitude: {:05.2f} metres'.format(currAltitude))
 
       #Detect Apogee
       if currAltitude > liftoffAltitude:
@@ -95,30 +92,35 @@ class BMP280Poller(threading.Thread):
           if currMeasures == 0:
             apogeeAltitude = currAltitude
             apogeeReached = True
-            print('Apogee altitude: {:05.2f} metres'.format(apogeeAltitude))
+            logging.info('Apogee altitude: {:05.2f} metres'.format(apogeeAltitude))
         else:
           lastAltitude = currAltitude
           currMeasures =  self.measures
 
       if apogeeReached == True and currAltitude < 50:
         #Begin beep
-        print("miomoimiomiomoimo")
         self.speaker.altitudeBeep(apogeeAltitude)
       time.sleep(self.rateTime)
 
     GPIO.cleanup()
+    logging.debug("Closing BMP280")
 
 class Speaker():
   def __init__(self):
+
+    #Read ConfigFile
     config = ConfigParser.ConfigParser()
     config.read("/home/pi/Ansari2019/config.ini")
     self.pinSpeaker = int(config.get("BUZZER", "pinSpeaker"))
     self.freq = int(config.get("BUZZER", "frequency"))
     self.duttyc = float(config.get("BUZZER", "dutty_cycle"))
+
+    #Set pins
     GPIO.setup(self.pinSpeaker,GPIO.OUT)
     self.pwm = GPIO.PWM(self.pinSpeaker, self.freq)
 
   def beginBeep(self):
+    #Initial beep sequence
     for i in range(5):
       self.pwm.start(self.duttyc)
       time.sleep(0.5)
@@ -126,14 +128,18 @@ class Speaker():
       time.sleep(0.5)
 
   def longBeep(self):
+    #1 long beep = 100 meters
     self.pwm.start(self.duttyc)
     time.sleep(1.5)
     self.pwm.stop()
+    time.sleep(0.3)
 
   def shortBeep(self):
+    #1 short beep = 10 meters
     self.pwm.start(self.duttyc)
     time.sleep(0.3)
     self.pwm.stop()
+    time.sleep(0.3)
 
   def altitudeBeep(self,altitude):
     if altitude > 99:
@@ -156,12 +162,14 @@ class Speaker():
 
 class Kalman():
   def __init__(self):
+
+    #Read ConfigFile
     config = ConfigParser.ConfigParser()
     config.read("/home/pi/Ansari2019/config.ini")
-
     self.q = float(config.get("KALMAN", "q"))
     self.r = float(config.get("KALMAN", "q"))
 
+    #Initializing variables
     self.x = 0
     self.p = 0
     self.x_temp = 0
